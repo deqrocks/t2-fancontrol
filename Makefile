@@ -36,15 +36,17 @@ install:
 	$(INSTALL) -Dm644 $(ICON_SRC) $(ICONS_DIR)/$(APP_ID).svg
 	$(INSTALL) -Dm644 $(UNIT_SRC) $(UNIT_DIR)/t2-fancontrol.service
 	@if [ -f "$(ICON_THEME_DIR)/index.theme" ]; then $(GTK_UPDATE_ICON_CACHE) $(ICON_THEME_DIR); fi
-	@systemctl daemon-reload >/dev/null 2>&1 || true
+	systemctl daemon-reload
+	systemctl enable --now t2-fancontrol.service
 
 uninstall:
+	systemctl disable --now t2-fancontrol.service || true
 	rm -f $(BIN_DIR)/$(BIN_NAME)
 	rm -f $(APPS_DIR)/$(APP_ID).desktop
 	rm -f $(ICONS_DIR)/$(APP_ID).svg
 	rm -f $(UNIT_DIR)/t2-fancontrol.service
 	@if [ -f "$(ICON_THEME_DIR)/index.theme" ]; then $(GTK_UPDATE_ICON_CACHE) $(ICON_THEME_DIR); fi
-	@systemctl daemon-reload >/dev/null 2>&1 || true
+	systemctl daemon-reload
 
 install-user:
 	$(INSTALL) -Dm755 $(BIN_SRC) $(USER_BIN_DIR)/$(BIN_NAME)

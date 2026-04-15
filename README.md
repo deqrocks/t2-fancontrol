@@ -19,7 +19,7 @@ Fan control is handled by a background daemon integrated with systemd. This keep
 make
 sudo make install
 ```
-This step is mandatory. It puts the binary, desktop entry, icon and systemd service in the correct system locations.
+This step is mandatory. It puts the binary, desktop entry, icon and systemd service in the correct system locations, then enables and starts `t2-fancontrol.service`.
 
 If you are using t2fanrd (check that by running `sudo systemctl status t2fanrd`) we need to disable it:
 
