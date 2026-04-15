@@ -14,22 +14,20 @@ pub fn autostart_enabled() -> bool {
 
 pub fn set_autostart(enabled: bool) -> Result<()> {
     if enabled {
-        install_service()?;
+        enable_service()?;
     } else {
-        uninstall_service()?;
+        disable_service()?;
     }
     Ok(())
 }
 
-fn install_service() -> Result<()> {
-    run_systemctl(["daemon-reload"])?;
-    run_systemctl(["enable", "--now", SERVICE_NAME])?;
+fn enable_service() -> Result<()> {
+    run_systemctl(["enable", SERVICE_NAME])?;
     Ok(())
 }
 
-fn uninstall_service() -> Result<()> {
-    run_systemctl(["disable", "--now", SERVICE_NAME])?;
-    run_systemctl(["daemon-reload"])?;
+fn disable_service() -> Result<()> {
+    run_systemctl(["disable", SERVICE_NAME])?;
     Ok(())
 }
 
