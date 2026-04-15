@@ -34,7 +34,7 @@ use signal_hook::consts::signal::SIGHUP;
 use sysfs::{discover_fans, discover_temperature_sources, FanEndpoint, TemperatureSnapshot, TemperatureSource};
 
 const APP_ID: &str = "org.t2fancontrol.gtk";
-const APP_VERSION: &str = "0.02";
+const APP_VERSION: &str = "0.03";
 const HISTORY_CAPACITY: usize = 90;
 
 #[derive(Clone, Copy)]
@@ -116,8 +116,6 @@ struct UiRefs {
     target_label: Label,
     fan_label: Label,
     details_label: Label,
-    control_toggle: ToggleButton,
-    autostart_toggle: ToggleButton,
     preset_quiet: ToggleButton,
     preset_balanced: ToggleButton,
     preset_performance: ToggleButton,
@@ -197,20 +195,6 @@ impl AppModel {
                 self.status = format!("{fallback_status}: {error}");
             }
         }
-    }
-
-    fn set_control_active(&mut self, enabled: bool) {
-        self.send_request(
-            Request::SetActive(enabled),
-            String::from("Updating fan control failed"),
-        );
-    }
-
-    fn set_autostart(&mut self, enabled: bool) {
-        self.send_request(
-            Request::SetAutostart(enabled),
-            String::from("Updating autostart failed"),
-        );
     }
 
     fn set_preset(&mut self, preset: PresetKind) {
@@ -521,21 +505,24 @@ fn build_ui(app: &Application) {
     header.append(&ui.status);
     root.append(&header);
 
-    let toggles = GtkBox::new(Orientation::Horizontal, 6);
-    toggles.add_css_class("top-strip");
-    toggles.set_homogeneous(true);
-    toggles.append(&ui.control_toggle);
-    toggles.append(&ui.autostart_toggle);
-    root.append(&toggles);
-
-    let preset_row = GtkBox::new(Orientation::Horizontal, 6);
-    preset_row.add_css_class("top-strip");
-    preset_row.set_homogeneous(true);
-    preset_row.append(&ui.preset_quiet);
-    preset_row.append(&ui.preset_balanced);
-    preset_row.append(&ui.preset_performance);
-    preset_row.append(&ui.preset_custom);
-    root.append(&preset_row);
+    let preset_grid = Grid::builder()
+        .column_spacing(6)
+        .row_spacing(6)
+        .hexpand(true)
+        .build();
+    ui.preset_quiet.set_hexpand(true);
+    ui.preset_quiet.set_size_request(112, -1);
+    ui.preset_balanced.set_hexpand(true);
+    ui.preset_balanced.set_size_request(112, -1);
+    ui.preset_performance.set_hexpand(true);
+    ui.preset_performance.set_size_request(112, -1);
+    ui.preset_custom.set_hexpand(true);
+    ui.preset_custom.set_size_request(112, -1);
+    preset_grid.attach(&ui.preset_quiet, 0, 0, 1, 1);
+    preset_grid.attach(&ui.preset_balanced, 1, 0, 1, 1);
+    preset_grid.attach(&ui.preset_performance, 0, 1, 1, 1);
+    preset_grid.attach(&ui.preset_custom, 1, 1, 1, 1);
+    root.append(&preset_grid);
 
     let summary = Grid::builder()
         .column_spacing(12)
@@ -597,34 +584,6 @@ fn build_ui(app: &Application) {
     {
         let model = model.clone();
         let ui = ui.clone();
-        let control_toggle = ui.control_toggle.clone();
-        control_toggle.connect_toggled(move |button| {
-            if ui.syncing.get() {
-                return;
-            }
-            let mut model = model.borrow_mut();
-            model.set_control_active(button.is_active());
-            sync_ui(&model, &ui);
-        });
-    }
-
-    {
-        let model = model.clone();
-        let ui = ui.clone();
-        let autostart_toggle = ui.autostart_toggle.clone();
-        autostart_toggle.connect_toggled(move |button| {
-            if ui.syncing.get() {
-                return;
-            }
-            let mut model = model.borrow_mut();
-            model.set_autostart(button.is_active());
-            sync_ui(&model, &ui);
-        });
-    }
-
-    {
-        let model = model.clone();
-        let ui = ui.clone();
         connect_preset_button(&ui.preset_quiet, PresetKind::Quiet, &model, &ui);
         connect_preset_button(&ui.preset_balanced, PresetKind::Balanced, &model, &ui);
         connect_preset_button(&ui.preset_performance, PresetKind::Performance, &model, &ui);
@@ -654,14 +613,10 @@ fn build_widgets() -> UiRefs {
         label
     };
 
-    let control_toggle = ToggleButton::with_label("Fan Control");
-    control_toggle.add_css_class("toggle-chip");
-    let autostart_toggle = ToggleButton::with_label("Autostart");
-    autostart_toggle.add_css_class("toggle-chip");
-    let preset_quiet = ToggleButton::with_label("Quiet");
-    let preset_balanced = ToggleButton::with_label("Balanced");
-    let preset_performance = ToggleButton::with_label("Performance");
-    let preset_custom = ToggleButton::with_label("Custom");
+    let preset_quiet = ToggleButton::with_label(PresetKind::Quiet.ui_label());
+    let preset_balanced = ToggleButton::with_label(PresetKind::Balanced.ui_label());
+    let preset_performance = ToggleButton::with_label(PresetKind::Performance.ui_label());
+    let preset_custom = ToggleButton::with_label(PresetKind::Custom.ui_label());
     for button in [
         &preset_quiet,
         &preset_balanced,
@@ -685,7 +640,7 @@ fn build_widgets() -> UiRefs {
 
     let fan_graph = DrawingArea::new();
     fan_graph.set_content_width(248);
-    fan_graph.set_content_height(78);
+    fan_graph.set_content_height(88);
     fan_graph.set_vexpand(false);
     fan_graph.set_hexpand(true);
 
@@ -697,8 +652,6 @@ fn build_widgets() -> UiRefs {
         target_label: make_value(),
         fan_label: make_value(),
         details_label: make_value(),
-        control_toggle,
-        autostart_toggle,
         preset_quiet,
         preset_balanced,
         preset_performance,
@@ -900,10 +853,6 @@ fn sync_ui(model: &AppModel, ui: &UiRefs) {
     };
     ui.details_label.set_label(&details);
 
-    ui.control_toggle
-        .set_active(model.config.automatic_control_enabled);
-    ui.autostart_toggle
-        .set_active(model.config.autostart_enabled);
     ui.preset_quiet
         .set_active(model.config.active_preset == PresetKind::Quiet);
     ui.preset_balanced

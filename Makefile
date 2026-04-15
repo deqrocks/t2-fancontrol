@@ -31,6 +31,7 @@ build:
 	$(CARGO) build --release
 
 install:
+	@if systemctl list-unit-files t2fanrd.service >/dev/null 2>&1; then systemctl disable --now t2fanrd.service || true; fi
 	$(INSTALL) -Dm755 $(BIN_SRC) $(BIN_DIR)/$(BIN_NAME)
 	$(INSTALL) -Dm644 $(DESKTOP_SRC) $(APPS_DIR)/$(APP_ID).desktop
 	$(INSTALL) -Dm644 $(ICON_SRC) $(ICONS_DIR)/$(APP_ID).svg
@@ -47,6 +48,7 @@ uninstall:
 	rm -f $(UNIT_DIR)/t2-fancontrol.service
 	@if [ -f "$(ICON_THEME_DIR)/index.theme" ]; then $(GTK_UPDATE_ICON_CACHE) $(ICON_THEME_DIR); fi
 	systemctl daemon-reload
+	@if systemctl list-unit-files t2fanrd.service >/dev/null 2>&1; then systemctl enable --now t2fanrd.service || true; fi
 
 install-user:
 	$(INSTALL) -Dm755 $(BIN_SRC) $(USER_BIN_DIR)/$(BIN_NAME)

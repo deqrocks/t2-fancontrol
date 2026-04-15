@@ -21,12 +21,35 @@ sudo make install
 ```
 This step is mandatory. It puts the binary, desktop entry, icon and systemd service in the correct system locations, then enables and starts `t2-fancontrol.service`.
 
-If you are using t2fanrd (check that by running `sudo systemctl status t2fanrd`) we need to disable it:
+If `t2fanrd.service` is present, `sudo make install` disables and stops it automatically to avoid conflicts.
+
+`sudo make install` does all of the following:
+
+- installs the binary to `/usr/local/bin/t2-fancontrol-gtk`
+- installs the desktop entry to `/usr/local/share/applications/org.t2fancontrol.gtk.desktop`
+- installs the icon to `/usr/local/share/icons/hicolor/scalable/apps/org.t2fancontrol.gtk.svg`
+- installs the systemd unit to `/usr/local/lib/systemd/system/t2-fancontrol.service`
+- reloads systemd
+- enables and starts `t2-fancontrol.service`
+- disables and stops `t2fanrd.service` if it exists
+
+## Uninstall
 
 ```bash
-sudo systemctl disable t2fanrd
-``` 
+sudo make uninstall
+```
 
+This removes the installed files, disables `t2-fancontrol.service`, and re-enables `t2fanrd.service` if it is present on the system.
+
+`sudo make uninstall` does all of the following:
+
+- disables and stops `t2-fancontrol.service`
+- removes the installed binary
+- removes the desktop entry
+- removes the installed icon
+- removes the installed systemd unit
+- reloads systemd
+- re-enables and starts `t2fanrd.service` if it exists
 
 ## Build Dependencies
 

@@ -34,6 +34,15 @@ impl PresetKind {
         }
     }
 
+    pub fn ui_label(self) -> &'static str {
+        match self {
+            Self::Quiet => "Quiet",
+            Self::Balanced => "Balanced",
+            Self::Performance => "Power",
+            Self::Custom => "Custom",
+        }
+    }
+
     pub fn from_str(value: &str) -> Option<Self> {
         Some(match value {
             "Quiet" | "Silent" => Self::Quiet,
